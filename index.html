@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六年級數學：速率綜合實驗室</title>
+    <style>
+        :root { --primary: #0288d1; --secondary: #ffc107; --bg: #f4f7f9; --success: #4caf50; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: var(--bg); text-align: center; margin: 0; padding: 10px; }
+        
+        /* 導覽列 */
+        .tab-container { display: flex; justify-content: center; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab { padding: 10px 15px; cursor: pointer; background: #ccc; border-radius: 10px; border: none; font-size: 1rem; margin: 2px; }
+        .tab.active { background: var(--primary); color: white; font-weight: bold; }
+        
+        /* 模擬舞台 */
+        #stage {
+            width: 95%; height: 180px; background: white; margin: 0 auto; 
+            position: relative; overflow: hidden; border: 4px solid #333; border-radius: 15px;
+            background-image: linear-gradient(#eee 1px, transparent 1px), linear-gradient(90deg, #eee 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .runner { position: absolute; font-size: 40px; bottom: 30px; transition: left 0.1s linear; }
+        
+        /* 控制區 */
+        .controls {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px; background: white; padding: 15px; max-width: 900px; margin: 15px auto;
+            border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .control-group { border: 1px solid #ddd; padding: 10px; border-radius: 10px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type=range] { width: 70%; }
+        .val { font-size: 1.2rem; color: #d32f2f; font-weight: bold; }
+
+        /* 算式顯示 */
+        #formula-box {
+            font-size: 1.6rem; padding: 15px; background: #fff9c4;
+            border-radius: 15px; max-width: 900px; margin: 10px auto; border: 2px dashed #fbc02d;
+        }
+
+        /* --- 新增：手寫計算空間 --- */
+        #canvas-container {
+            max-width: 900px; margin: 20px auto; background: white; padding: 15px;
+            border-radius: 15px; border: 2px solid #0288d1;
+        }
+        canvas { border: 1px solid #aaa; background: #fff; cursor: crosshair; touch-action: none; width: 100%; max-width: 800px; height: 200px; }
+        .canvas-btns { margin-top: 10px; }
+        
+        /* 練習題區 */
+        .quiz-section {
+            max-width: 900px; margin: 20px auto; text-align: left; background: white; 
+            padding: 20px; border-radius: 15px; border: 3px solid var(--success);
+        }
+        .quiz-item { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
+        button.check-btn { background: var(--success); color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h1>🚀 速率實驗室 + 計算空間</h1>
+
+    <div class="tab-container">
+        <button class="tab active" onclick="switchMode('river', this)">🌊 流水問題</button>
+        <button class="tab" onclick="switchMode('meet', this)">🤝 相遇問題</button>
+        <button class="tab" onclick="switchMode('chase', this)">🏃 追趕問題</button>
+        <button class="tab" onclick="switchMode('avg', this)">📊 平均速率</button>
+    </div>
+
+    <div id="stage">
+        <div id="runnerA" class="runner">🚢</div>
+        <div id="runnerB" class="runner" style="display:none;">🏃</div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label id="labelA">🚢 船速 / A速度</label>
+            <input type="range" id="speedA" min="1" max="15" value="6">
+            <span class="val" id="valA">6</span>
+        </div>
+        <div class="control-group">
+            <label id="labelB">🌊 水速 / B速度</label>
+            <input type="range" id="speedB" min="0" max="10" value="3">
+            <span class="val" id="valB">3</span>
+        </div>
+        <div class="control-group" id="dirGroup">
+            <label>設定方向</label>
+            <select id="dirSelect" onchange="update()">
+                <option value="plus">順流 / 相向 (+)</option>
+                <option value="minus">逆流 / 追趕 (-)</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="formula-box">
+        <span id="formulaText">6 + 3 = 9</span>
+    </div>
+
+    <div id="canvas-container">
+        <h3>🎨 計算與塗鴉空間 (可以在這裡列式子喔！)</h3>
+        <canvas id="calcCanvas"></canvas>
+        <div class="canvas-btns">
+            <button onclick="clearCanvas()">❌ 清除畫布</button>
+            <span style="font-size: 0.9rem; color: #666;">（用滑鼠或手指畫圖幫助思考）</span>
+        </div>
+    </div>
+
+    <div class="quiz-section">
+        <h3>📝 小任務挑戰</h3>
+        
+        <div class="quiz-item">
+            <p><strong>Q1. 順流：</strong> 船速 12，水速 4。順流的速度是多少？</p>
+            <input type="number" id="q1"> <button class="check-btn" onclick="check(1, 16)">檢查</button>
+            <span id="f1"></span>
+        </div>
+
+        <div class="quiz-item">
+            <p><strong>Q2. 相遇：</strong> A速 7，B速 5。兩人對向走，每秒縮短幾公尺？</p>
+            <input type="number" id="q2"> <button class="check-btn" onclick="check(2, 12)">檢查</button>
+            <span id="f2"></span>
+        </div>
+
+        <div class="quiz-item">
+            <p><strong>Q3. 追趕：</strong> 追的人速 10，前面跑的人速 12。追得上嗎？</p>
+            <select id="q3"><option value="">請選擇</option><option value="no">追不上</option><option value="yes">追得上</option></select>
+            <button class="check-btn" onclick="check(3, 'no')">檢查</button>
+            <span id="f3"></span>
+        </div>
+    </div>
+
+    <script>
+        // --- 模擬器邏輯 ---
+        let currentMode = 'river';
+        let posA = 50, posB = 300;
+        const rA = document.getElementById('runnerA'), rB = document.getElementById('runnerB');
+        const sA = document.getElementById('speedA'), sB = document.getElementById('speedB');
+        const dir = document.getElementById('dirSelect');
+
+        function switchMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            rB.style.display = (mode === 'river' || mode === 'avg') ? 'none' : 'block';
+            rA.innerText = (mode === 'river') ? '🚢' : '🏃';
+            posA = 50; posB = 300;
+            
+            document.getElementById('labelA').innerText = mode==='river'?"🚢 船速":mode==='avg'?"⬅️ 去程速率":"🏃 A速度";
+            document.getElementById('labelB').innerText = mode==='river'?"🌊 水速":mode==='avg'?"➡️ 回程速率":"🚶 B速度";
+            document.getElementById('dirGroup').style.display = (mode==='river')?'block':'none';
+            update();
+        }
+
+        function update() {
+            const vA = parseInt(sA.value), vB = parseInt(sB.value);
+            document.getElementById('valA').innerText = vA;
+            document.getElementById('valB').innerText = vB;
+            let txt = "";
+            if(currentMode==='river') txt = (dir.value==='plus')?`${vA} + ${vB} = ${vA+vB}`:`${vA} - ${vB} = ${vA-vB}`;
+            else if(currentMode==='meet') txt = `相向而行 (加法)：${vA} + ${vB} = ${vA+vB}`;
+            else if(currentMode==='chase') txt = `同向追趕 (減法)：${vA} - ${vB} = ${vA-vB}`;
+            else if(currentMode==='avg') txt = `平均速率 = 總路程 ÷ 總時間`;
+            document.getElementById('formulaText').innerText = txt;
+        }
+
+        setInterval(() => {
+            const vA = parseInt(sA.value), vB = parseInt(sB.value);
+            if(currentMode==='river') {
+                let s = (dir.value==='plus')?(vA+vB):(vA-vB); posA += s*0.2;
+                if(posA > 800) posA = -50; rA.style.left = posA+'px';
+            } else if(currentMode==='meet') {
+                posA += vA*0.2; posB -= vB*0.2; if(posA > posB) {posA=0; posB=600;}
+                rA.style.left = posA+'px'; rB.style.left = posB+'px';
+            } else if(currentMode==='chase') {
+                posA += vA*0.2; posB += vB*0.2; if(posA >= posB) {posA=0; posB=200;}
+                rA.style.left = posA+'px'; rB.style.left = posB+'px';
+            }
+        }, 30);
+
+        sA.oninput = update; sB.oninput = update;
+
+        // --- 畫布邏輯 ---
+        const canvas = document.getElementById('calcCanvas');
+        const ctx = canvas.getContext('2d');
+        let painting = false;
+        canvas.width = canvas.offsetWidth;
+        canvas.height = 200;
+
+        function startPos(e) { painting = true; draw(e); }
+        function endPos() { painting = false; ctx.beginPath(); }
+        function draw(e) {
+            if (!painting) return;
+            ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#0288d1';
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+        }
+        canvas.addEventListener('mousedown', startPos); canvas.addEventListener('mouseup', endPos); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startPos); canvas.addEventListener('touchend', endPos); canvas.addEventListener('touchmove', draw);
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        // --- 檢查答案 ---
+        function check(id, correct) {
+            const val = document.getElementById('q'+id).value;
+            const feedback = document.getElementById('f'+id);
+            if(val == correct) { feedback.innerText = " ✅ 對了！"; feedback.style.color="green"; }
+            else { feedback.innerText = " ❌ 再想一下喔"; feedback.style.color="red"; }
+        }
+    </script>
+</body>
+</html>
